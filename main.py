@@ -153,6 +153,6 @@ def home():
 def run_bot():
     tg_app.run_polling()
 
-if name == "main":
+if __name__== "__main__":
     threading.Thread(target=run_bot).start()
     web.run(host="0.0.0.0", port=PORT)
