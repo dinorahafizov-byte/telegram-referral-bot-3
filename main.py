@@ -1,7 +1,5 @@
 import json
 import os
-import threading
-from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
@@ -11,11 +9,11 @@ from telegram.ext import (
 )
 
 # ========= SOZLAMALAR =========
-TOKEN = os.environ.get("BOT_TOKEN")  # Render Environment'dan olinadi
+TOKEN = os.environ.get("BOT_TOKEN")  # Render Environment dan olinadi
 
 CHANNELS = ["@Din_koreakosmetika", "@D_lingu"]
 PRIVATE_CHANNEL_ID = -1003512316765   # yopiq kanal ID
-ADMINS = [123456789]                 # o'zingizning telegram ID
+ADMINS = [123456789]                  # o‘zingizning Telegram ID
 REQUIRED = 8
 
 DATA_FILE = "data.json"
@@ -135,24 +133,12 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data["users"] = {}
     data["used"] = []
     save(data)
-    await update.message.reply_text("♻️ Hammasi tozalandi")# ========= TELEGRAM APP =========
-tg_app = ApplicationBuilder().token(TOKEN).build()
-tg_app.add_handler(CommandHandler("start", start))
-tg_app.add_handler(CommandHandler("stats", stats))
-tg_app.add_handler(CommandHandler("reset", reset))
-tg_app.add_handler(CallbackQueryHandler(check))
+    await update.message.reply_text("♻️ Hammasi tozalandi")# ========= RUN =========
+app = ApplicationBuilder().token(TOKEN).build()
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("stats", stats))
+app.add_handler(CommandHandler("reset", reset))
+app.add_handler(CallbackQueryHandler(check))
 
-# ========= FLASK (Render uchun) =========
-web = Flask(__name__)
-PORT = int(os.environ.get("PORT", 10000))
+app.run_polling()
 
-@web.route("/")
-def home():
-    return "OK"
-
-def run_bot():
-    tg_app.run_polling()
-
-if __name__== "__main__":
-    threading.Thread(target=run_bot).start()
-    web.run(host="0.0.0.0", port=PORT)
