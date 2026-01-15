@@ -143,7 +143,7 @@ tg_app.add_handler(CommandHandler("reset", reset))
 tg_app.add_handler(CallbackQueryHandler(check))
 
 # ========= FLASK (Render uchun) =========
-web = Flask(name)
+web = Flask(__name__)
 PORT = int(os.environ.get("PORT", 10000))
 
 @web.route("/")
