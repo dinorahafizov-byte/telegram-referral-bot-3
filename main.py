@@ -1,4 +1,7 @@
 import json
+import os
+import threading
+from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
@@ -8,11 +11,11 @@ from telegram.ext import (
 )
 
 # ========= SOZLAMALAR =========
-TOKEN = "8546497120:AAHU-TdE1K85NAdKtw4empPnBLUjnhoW7Z8"
+TOKEN = os.environ.get("BOT_TOKEN")  # Render Environment'dan olinadi
 
 CHANNELS = ["@Din_koreakosmetika", "@D_lingu"]
 PRIVATE_CHANNEL_ID = -1003512316765   # yopiq kanal ID
-ADMINS = [123456789]                  # o'zingizning telegram ID
+ADMINS = [123456789]                 # o'zingizning telegram ID
 REQUIRED = 8
 
 DATA_FILE = "data.json"
@@ -54,11 +57,9 @@ async def is_subscribed(bot, uid):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
 
-    # yangi user
     if uid not in data["users"]:
         data["users"][uid] = {"count": 0, "reward": False}
 
-        # REFERAL SANASH STARTDA
         if context.args:
             ref = context.args[0]
             key = f"{ref}>{uid}"
@@ -102,7 +103,6 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     )
 
-    # SOVG‘A
     if count >= REQUIRED and not data["users"][uid]["reward"]:
         invite = await bot.create_chat_invite_link(
             chat_id=PRIVATE_CHANNEL_ID,
@@ -117,7 +117,7 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🎁 Yopiq kanal (1 martalik link):\n{invite.invite_link}"
         )
 
-# ========= ADMIN STAT =========
+# ========= ADMIN =========
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMINS:
         return
@@ -128,7 +128,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(txt or "Bo‘sh")
 
-# ========= RESET =========
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMINS:
         return
@@ -136,13 +135,24 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data["users"] = {}
     data["used"] = []
     save(data)
-    await update.message.reply_text("♻️ Hammasi tozalandi")
+    await update.message.reply_text("♻️ Hammasi tozalandi")# ========= TELEGRAM APP =========
+tg_app = ApplicationBuilder().token(TOKEN).build()
+tg_app.add_handler(CommandHandler("start", start))
+tg_app.add_handler(CommandHandler("stats", stats))
+tg_app.add_handler(CommandHandler("reset", reset))
+tg_app.add_handler(CallbackQueryHandler(check))
 
-# ========= APP =========
-app = ApplicationBuilder().token(TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("stats", stats))
-app.add_handler(CommandHandler("reset", reset))
-app.add_handler(CallbackQueryHandler(check))
+# ========= FLASK (Render uchun) =========
+web = Flask(name)
+PORT = int(os.environ.get("PORT", 10000))
 
-app.run_polling()
+@web.route("/")
+def home():
+    return "OK"
+
+def run_bot():
+    tg_app.run_polling()
+
+if name == "main":
+    threading.Thread(target=run_bot).start()
+    web.run(host="0.0.0.0", port=PORT)
