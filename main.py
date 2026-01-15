@@ -1,18 +1,23 @@
 import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes
+)
 
+# ========= SOZLAMALAR =========
 TOKEN = "8546497120:AAHU-TdE1K85NAdKtw4empPnBLUjnhoW7Z8"
 
 CHANNELS = ["@Din_koreakosmetika", "@D_lingu"]
-PRIVATE_CHANNEL_ID = -1003512316765
-ADMINS = [123456789]
+PRIVATE_CHANNEL_ID = -1003512316765   # yopiq kanal ID
+ADMINS = [123456789]                  # o'zingizning telegram ID
 REQUIRED = 8
 
 DATA_FILE = "data.json"
 
-
-# ---------- DATA ----------
+# ========= DATA =========
 def load():
     try:
         with open(DATA_FILE, "r") as f:
@@ -20,27 +25,24 @@ def load():
     except:
         return {"users": {}, "used": []}
 
-
 def save(d):
     with open(DATA_FILE, "w") as f:
         json.dump(d, f)
 
-
 data = load()
 
-
 TEXT = (
-    "Online til markazimizga xush kelibsiz😍\n\n"
+    "Online til markazimizga xush kelibsiz 😍\n\n"
     "Men sizga:\n"
     "🇬🇧 Ingliz tili\n"
     "🇰🇷 Koreys tili\n"
     "🇸🇦 Arab tilini\n"
     "oddiy va tushunarli usulda o‘rgataman.\n\n"
-    "👇 Sizga Arab tilidan tekin kursimni sovg‘a qilaman.\n"
-    "8 ta odam olib keling va sovg‘ani qo‘lga kiriting 🎁\n\n"
+    "👇 Arab tilidan TEKIN kurs\n"
+    "🎯 8 ta odam olib keling va sovg‘ani oling!\n\n"
 )
 
-
+# ========= KANAL TEKSHIRISH =========
 async def is_subscribed(bot, uid):
     for ch in CHANNELS:
         m = await bot.get_chat_member(ch, uid)
@@ -48,12 +50,22 @@ async def is_subscribed(bot, uid):
             return False
     return True
 
-
+# ========= /start =========
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
 
+    # yangi user
     if uid not in data["users"]:
         data["users"][uid] = {"count": 0, "reward": False}
+
+        # REFERAL SANASH STARTDA
+        if context.args:
+            ref = context.args[0]
+            key = f"{ref}>{uid}"
+            if ref != uid and ref in data["users"] and key not in data["used"]:
+                data["users"][ref]["count"] += 1
+                data["used"].append(key)
+
         save(data)
 
     keyboard = [
@@ -67,7 +79,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-
+# ========= TEKSHIRISH =========
 async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -78,15 +90,6 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await q.message.reply_text("❌ Avval barcha kanallarga obuna bo‘ling.")
         return
 
-    # REFERAL SANASH
-    if context.args:
-        ref = context.args[0]
-        key = f"{ref}>{uid}"
-        if ref != uid and key not in data["used"] and ref in data["users"]:
-            data["users"][ref]["count"] += 1
-            data["used"].append(key)
-            save(data)
-
     link = f"https://t.me/{bot.username}?start={uid}"
     count = data["users"][uid]["count"]
 
@@ -94,11 +97,12 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo=open("promo.jpg", "rb"),
         caption=(
             TEXT +
-            f"🔗 Sizning shaxsiy referal linkingiz:\n{link}\n\n"
+            f"🔗 Sizning referal linkingiz:\n{link}\n\n"
             f"📊 Natija: {count}/{REQUIRED}"
         )
     )
 
+    # SOVG‘A
     if count >= REQUIRED and not data["users"][uid]["reward"]:
         invite = await bot.create_chat_invite_link(
             chat_id=PRIVATE_CHANNEL_ID,
@@ -109,28 +113,32 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await bot.send_message(
             int(uid),
-            f"🎉 TABRIKLAYMIZ!\n\n🎁 Yopiq kanal (1 martalik):\n{invite.invite_link}"
+            f"🎉 TABRIKLAYMIZ!\n\n"
+            f"🎁 Yopiq kanal (1 martalik link):\n{invite.invite_link}"
         )
 
-
+# ========= ADMIN STAT =========
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMINS:
         return
+
     txt = "📊 STATISTIKA\n\n"
     for u, d in data["users"].items():
         txt += f"{u} → {d['count']}\n"
+
     await update.message.reply_text(txt or "Bo‘sh")
 
-
+# ========= RESET =========
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMINS:
         return
+
     data["users"] = {}
     data["used"] = []
     save(data)
     await update.message.reply_text("♻️ Hammasi tozalandi")
 
-
+# ========= APP =========
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("stats", stats))
